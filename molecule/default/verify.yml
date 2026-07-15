@@ -144,8 +144,10 @@
             ha_mqtt_agent_test_marker_stat_after_check.stat.mtime ==
             ha_mqtt_agent_test_marker_stat_before_check.stat.mtime
           - >-
-            ha_mqtt_agent_test_installer_count_after_check.stdout | int ==
-            ha_mqtt_agent_test_installer_count_before_check.stdout | int
+            (ha_mqtt_agent_test_installer_count_after_check.stdout.split() |
+             first | int) ==
+            (ha_mqtt_agent_test_installer_count_before_check.stdout.split() |
+             first | int)
           - >-
             ha_mqtt_agent_test_service_timestamp_after_check.stdout | trim ==
             ha_mqtt_agent_test_service_timestamp_before_check.stdout | trim
