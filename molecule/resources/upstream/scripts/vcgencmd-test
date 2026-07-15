@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -o errexit -o nounset -o pipefail
 
+printf '%s\n' "$*" >> /tmp/ha-mqtt-agent-firmware.log
+
 case "${1:-}" in
   get_throttled)
     printf '%s\n' 'throttled=0x0'

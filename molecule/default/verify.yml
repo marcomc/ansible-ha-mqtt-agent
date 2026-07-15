@@ -152,6 +152,24 @@
             ha_mqtt_agent_test_service_timestamp_after_check.stdout | trim ==
             ha_mqtt_agent_test_service_timestamp_before_check.stdout | trim
 
+    - name: Read firmware probe count before pending install check mode
+      ansible.builtin.command:
+        argv:
+          - wc
+          - -l
+          - /tmp/ha-mqtt-agent-firmware.log
+      changed_when: false
+      register: ha_mqtt_agent_test_firmware_count_before_pending_install_check
+
+    - name: Read MQTT probe count before pending install check mode
+      ansible.builtin.command:
+        argv:
+          - wc
+          - -l
+          - /tmp/ha-mqtt-agent-mqtt.log
+      changed_when: false
+      register: ha_mqtt_agent_test_mqtt_count_before_pending_install_check
+
     - name: Run pending install role in check mode
       ansible.builtin.command:
         argv:
@@ -174,6 +192,24 @@
       changed_when: false
       register: ha_mqtt_agent_test_installer_count_after_pending_install_check
 
+    - name: Read firmware probe count after pending install check mode
+      ansible.builtin.command:
+        argv:
+          - wc
+          - -l
+          - /tmp/ha-mqtt-agent-firmware.log
+      changed_when: false
+      register: ha_mqtt_agent_test_firmware_count_after_pending_install_check
+
+    - name: Read MQTT probe count after pending install check mode
+      ansible.builtin.command:
+        argv:
+          - wc
+          - -l
+          - /tmp/ha-mqtt-agent-mqtt.log
+      changed_when: false
+      register: ha_mqtt_agent_test_mqtt_count_after_pending_install_check
+
     - name: Assert pending install check-mode behavior
       ansible.builtin.assert:
         that:
@@ -182,6 +218,16 @@
             (ha_mqtt_agent_test_installer_count_after_pending_install_check.stdout.split() |
              first | int) ==
             (ha_mqtt_agent_test_installer_count_after_check.stdout.split() |
+             first | int)
+          - >-
+            (ha_mqtt_agent_test_firmware_count_after_pending_install_check.stdout.split() |
+             first | int) ==
+            (ha_mqtt_agent_test_firmware_count_before_pending_install_check.stdout.split() |
+             first | int)
+          - >-
+            (ha_mqtt_agent_test_mqtt_count_after_pending_install_check.stdout.split() |
+             first | int) ==
+            (ha_mqtt_agent_test_mqtt_count_before_pending_install_check.stdout.split() |
              first | int)
 
     - name: Write stale managed config that fails MQTT validation
