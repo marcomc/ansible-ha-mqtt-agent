@@ -1,5 +1,10 @@
 ---
 - name: Read installed ha-mqtt-agent version
+  when: >-
+    not (
+      ansible_check_mode
+      and (ha_mqtt_agent_install_required | bool)
+    )
   ansible.builtin.command:
     argv:
       - "{{ _ha_mqtt_agent_binary_path }}"
@@ -9,7 +14,13 @@
   check_mode: false
 
 - name: Assert expected ha-mqtt-agent version
-  when: ha_mqtt_agent_expected_version | length > 0
+  when:
+    - ha_mqtt_agent_expected_version | length > 0
+    - >-
+      not (
+        ansible_check_mode
+        and (ha_mqtt_agent_install_required | bool)
+      )
   ansible.builtin.assert:
     that:
       - ha_mqtt_agent_expected_version in ha_mqtt_agent_version.stdout

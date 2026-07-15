@@ -152,6 +152,38 @@
             ha_mqtt_agent_test_service_timestamp_after_check.stdout | trim ==
             ha_mqtt_agent_test_service_timestamp_before_check.stdout | trim
 
+    - name: Run pending install role in check mode
+      ansible.builtin.command:
+        argv:
+          - ansible-playbook
+          - --check
+          - --inventory
+          - "{{ inventory_file }}"
+          - "{{ playbook_dir }}/check-pending-install.yml"
+      changed_when: false
+      delegate_to: localhost
+      become: false
+      register: ha_mqtt_agent_test_pending_install_check
+
+    - name: Read installer invocation count after pending install check mode
+      ansible.builtin.command:
+        argv:
+          - wc
+          - -l
+          - /var/tmp/ha-mqtt-agent-probes/installer.log
+      changed_when: false
+      register: ha_mqtt_agent_test_installer_count_after_pending_install_check
+
+    - name: Assert pending install check-mode behavior
+      ansible.builtin.assert:
+        that:
+          - ha_mqtt_agent_test_pending_install_check.rc == 0
+          - >-
+            (ha_mqtt_agent_test_installer_count_after_pending_install_check.stdout.split() |
+             first | int) ==
+            (ha_mqtt_agent_test_installer_count_after_check.stdout.split() |
+             first | int)
+
     - name: Write stale managed config that fails MQTT validation
       ansible.builtin.copy:
         content: |
