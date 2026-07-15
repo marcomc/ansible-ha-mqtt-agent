@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -o errexit -o nounset -o pipefail
+
+case "${1:-}" in
+  --version)
+    printf '%s\n' 'ha-mqtt-agent 0.0.0-test'
+    ;;
+  run)
+    exec /bin/sleep infinity
+    ;;
+  *)
+    printf '%s\n' 'fixture command completed'
+    ;;
+esac

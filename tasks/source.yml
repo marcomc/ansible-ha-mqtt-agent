@@ -1,0 +1,140 @@
+---
+- name: Read ha-mqtt-agent source parent
+  ansible.builtin.stat:
+    path: "{{ ha_mqtt_agent_source_dir | dirname }}"
+  register: ha_mqtt_agent_source_parent_stat
+  become: true
+
+- name: Validate existing ha-mqtt-agent source parent
+  when: ha_mqtt_agent_source_parent_stat.stat.exists
+  ansible.builtin.assert:
+    that:
+      - ha_mqtt_agent_source_parent_stat.stat.isdir
+    fail_msg: >-
+      The ha-mqtt-agent source parent exists but is not a directory:
+      {{ ha_mqtt_agent_source_dir | dirname }}.
+
+- name: Create missing ha-mqtt-agent source parent
+  when: not ha_mqtt_agent_source_parent_stat.stat.exists
+  ansible.builtin.file:
+    path: "{{ ha_mqtt_agent_source_dir | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Check out ha-mqtt-agent source
+  ansible.builtin.git:
+    repo: "{{ ha_mqtt_agent_repo_url }}"
+    dest: "{{ ha_mqtt_agent_source_dir }}"
+    version: "{{ ha_mqtt_agent_repo_version }}"
+    update: "{{ ha_mqtt_agent_repo_update }}"
+    force: "{{ ha_mqtt_agent_repo_force }}"
+  become: true
+  register: ha_mqtt_agent_git_checkout
+
+- name: Read checked-out ha-mqtt-agent revision
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/git
+      - rev-parse
+      - HEAD
+  args:
+    chdir: "{{ ha_mqtt_agent_source_dir }}"
+  register: ha_mqtt_agent_source_revision
+  changed_when: false
+  become: true
+
+- name: Read ha-mqtt-agent installer interface
+  ansible.builtin.command:
+    argv:
+      - "{{ ha_mqtt_agent_source_dir }}/scripts/install.sh"
+      - --help
+  register: ha_mqtt_agent_installer_help
+  changed_when: false
+  become: true
+
+- name: Resolve ha-mqtt-agent deferred-start behavior
+  ansible.builtin.set_fact:
+    ha_mqtt_agent_installer_supports_deferred_start: >-
+      {{ '--no-start' in ha_mqtt_agent_installer_help.stdout }}
+    ha_mqtt_agent_installer_start_deferred: >-
+      {{
+        '--no-start' in ha_mqtt_agent_installer_arguments
+        or (
+          ha_mqtt_agent_installer_defer_start
+          and '--no-start' in ha_mqtt_agent_installer_help.stdout
+        )
+      }}
+
+- name: Read installed ha-mqtt-agent command
+  ansible.builtin.stat:
+    path: "{{ _ha_mqtt_agent_binary_path }}"
+  register: ha_mqtt_agent_binary_stat
+  become: true
+
+- name: Read installed ha-mqtt-agent service unit
+  ansible.builtin.stat:
+    path: "{{ _ha_mqtt_agent_service_unit_path }}"
+  register: ha_mqtt_agent_service_unit_stat
+  become: true
+
+- name: Read installed ha-mqtt-agent revision marker
+  ansible.builtin.slurp:
+    path: "{{ _ha_mqtt_agent_install_marker_path }}"
+  register: ha_mqtt_agent_install_marker
+  become: true
+  failed_when: false
+
+- name: Decide whether ha-mqtt-agent installation is required
+  ansible.builtin.set_fact:
+    ha_mqtt_agent_install_required: >-
+      {{
+        ha_mqtt_agent_force_install
+        or ha_mqtt_agent_git_checkout.changed
+        or not ha_mqtt_agent_binary_stat.stat.exists
+        or not ha_mqtt_agent_service_unit_stat.stat.exists
+        or ha_mqtt_agent_install_marker.content is not defined
+        or (ha_mqtt_agent_install_marker.content | b64decode | trim)
+          != (ha_mqtt_agent_source_revision.stdout | trim)
+      }}
+
+- name: Report installer without deferred-start support
+  when:
+    - ha_mqtt_agent_install_required | bool
+    - ha_mqtt_agent_installer_defer_start | bool
+    - not ha_mqtt_agent_installer_supports_deferred_start | bool
+  ansible.builtin.debug:
+    msg: >-
+      The pinned installer does not support --no-start; it may start the
+      service before Ansible applies config policy. Existing configs remain
+      preserved.
+
+- name: Install ha-mqtt-agent through its upstream installer
+  when: ha_mqtt_agent_install_required | bool
+  ansible.builtin.command:
+    argv: >-
+      {{
+        [ha_mqtt_agent_source_dir ~ '/scripts/install.sh']
+        + ha_mqtt_agent_installer_arguments
+        + (['--no-start']
+           if ha_mqtt_agent_installer_start_deferred
+              and '--no-start' not in ha_mqtt_agent_installer_arguments
+           else [])
+      }}
+  args:
+    chdir: "{{ ha_mqtt_agent_source_dir }}"
+  register: ha_mqtt_agent_installer_run
+  become: true
+  changed_when: true
+
+- name: Record installed ha-mqtt-agent revision
+  when: ha_mqtt_agent_install_required | bool
+  ansible.builtin.copy:
+    content: "{{ ha_mqtt_agent_source_revision.stdout | trim }}\n"
+    dest: "{{ _ha_mqtt_agent_install_marker_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  become: true

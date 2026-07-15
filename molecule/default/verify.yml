@@ -1,0 +1,54 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Read managed config
+      ansible.builtin.slurp:
+        path: /etc/ha-mqtt-agent/config.toml
+      register: ha_mqtt_agent_test_config
+
+    - name: Read managed config metadata
+      ansible.builtin.stat:
+        path: /etc/ha-mqtt-agent/config.toml
+      register: ha_mqtt_agent_test_config_stat
+
+    - name: Read installed revision marker
+      ansible.builtin.slurp:
+        path: /opt/ha-mqtt-agent/.ansible-installed-revision
+      register: ha_mqtt_agent_test_marker
+
+    - name: Read checked-out source revision
+      ansible.builtin.command:
+        argv:
+          - git
+          - rev-parse
+          - HEAD
+      args:
+        chdir: /opt/ha-mqtt-agent/source
+      changed_when: false
+      register: ha_mqtt_agent_test_revision
+
+    - name: Read ha-mqtt-agent service state
+      ansible.builtin.command:
+        argv:
+          - systemctl
+          - is-active
+          - ha-mqtt-agent
+      changed_when: false
+      register: ha_mqtt_agent_test_service
+
+    - name: Assert installed agent state
+      ansible.builtin.assert:
+        that:
+          - >-
+            ha_mqtt_agent_test_config.content | b64decode is
+            search('broker.example.test')
+          - ha_mqtt_agent_test_config_stat.stat.mode == '0640'
+          - ha_mqtt_agent_test_config_stat.stat.pw_name == 'root'
+          - ha_mqtt_agent_test_config_stat.stat.gr_name == 'ha-mqtt-agent'
+          - >-
+            (ha_mqtt_agent_test_marker.content | b64decode | trim) ==
+            (ha_mqtt_agent_test_revision.stdout | trim)
+          - ha_mqtt_agent_test_service.stdout | trim == 'active'

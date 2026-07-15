@@ -1,0 +1,21 @@
+---
+- name: Validate role inputs and target
+  ansible.builtin.import_tasks: validate.yml
+
+- name: Install runtime packages
+  ansible.builtin.import_tasks: packages.yml
+
+- name: Validate optional Raspberry Pi firmware access
+  ansible.builtin.import_tasks: firmware.yml
+
+- name: Install agent source
+  ansible.builtin.import_tasks: source.yml
+
+- name: Configure agent
+  ansible.builtin.import_tasks: config.yml
+
+- name: Configure systemd service
+  ansible.builtin.import_tasks: service.yml
+
+- name: Validate installed runtime
+  ansible.builtin.import_tasks: validate-runtime.yml

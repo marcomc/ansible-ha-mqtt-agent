@@ -1,0 +1,28 @@
+---
+- name: Validate ha-mqtt-agent configuration mode
+  ansible.builtin.assert:
+    that:
+      - ha_mqtt_agent_config_management in ['managed', 'unmanaged']
+      - ha_mqtt_agent_service_state in ['started', 'stopped']
+      - >-
+        not ha_mqtt_agent_enable_raspberry_pi_pmic_voltage
+        or ha_mqtt_agent_enable_raspberry_pi_firmware
+    fail_msg: >-
+      Invalid ha-mqtt-agent config mode, service state, or Raspberry Pi PMIC
+      validation settings.
+
+- name: Validate managed ha-mqtt-agent config content
+  when: ha_mqtt_agent_config_management == 'managed'
+  ansible.builtin.assert:
+    that:
+      - ha_mqtt_agent_config_content | length > 0
+    fail_msg: >-
+      ha_mqtt_agent_config_content must contain the complete TOML config when
+      config management is managed.
+  no_log: true
+
+- name: Validate Debian target
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['os_family'] == 'Debian'
+    fail_msg: "The ha_mqtt_agent role currently supports Debian-family systems."

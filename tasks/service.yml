@@ -1,0 +1,19 @@
+---
+- name: Manage upstream ha-mqtt-agent service
+  ansible.builtin.systemd_service:
+    name: "{{ _ha_mqtt_agent_service_name }}"
+    enabled: "{{ ha_mqtt_agent_service_enabled }}"
+    state: >-
+      {{
+        'restarted'
+        if ha_mqtt_agent_service_state == 'started'
+           and (
+             ha_mqtt_agent_config_install.changed | default(false)
+             or (
+               ha_mqtt_agent_installer_run.changed | default(false)
+               and ha_mqtt_agent_installer_start_deferred
+             )
+           )
+        else ha_mqtt_agent_service_state
+      }}
+  become: true

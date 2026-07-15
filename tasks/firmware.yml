@@ -1,0 +1,24 @@
+---
+- name: Validate Raspberry Pi firmware access dependencies
+  when: ha_mqtt_agent_enable_raspberry_pi_firmware | bool
+  block:
+    - name: Read Raspberry Pi firmware command
+      ansible.builtin.stat:
+        path: "{{ ha_mqtt_agent_vcgencmd_path }}"
+      register: ha_mqtt_agent_vcgencmd_stat
+
+    - name: Read Raspberry Pi firmware access group
+      ansible.builtin.getent:
+        database: group
+        key: "{{ ha_mqtt_agent_raspberry_pi_video_group }}"
+        fail_key: false
+
+    - name: Assert Raspberry Pi firmware dependencies exist
+      ansible.builtin.assert:
+        that:
+          - ha_mqtt_agent_vcgencmd_stat.stat.exists
+          - ha_mqtt_agent_vcgencmd_stat.stat.executable
+          - ha_mqtt_agent_raspberry_pi_video_group in ansible_facts.getent_group
+        fail_msg: >-
+          Raspberry Pi firmware monitoring requires an executable vcgencmd and
+          the configured firmware-access group.

@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  namespace: marcomc
+  role_name: ha_mqtt_agent
+  author: Marco Massari
+  description: Install Home Assistant MQTT Agent as a systemd service.
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+        - trixie
+  galaxy_tags:
+    - homeassistant
+    - monitoring
+    - mqtt
+    - raspberrypi
+    - systemd
+dependencies: []

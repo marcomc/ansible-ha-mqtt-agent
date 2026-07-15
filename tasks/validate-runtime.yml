@@ -1,0 +1,84 @@
+---
+- name: Read installed ha-mqtt-agent version
+  ansible.builtin.command:
+    argv:
+      - "{{ _ha_mqtt_agent_binary_path }}"
+      - --version
+  register: ha_mqtt_agent_version
+  changed_when: false
+
+- name: Assert expected ha-mqtt-agent version
+  when: ha_mqtt_agent_expected_version | length > 0
+  ansible.builtin.assert:
+    that:
+      - ha_mqtt_agent_expected_version in ha_mqtt_agent_version.stdout
+
+- name: Validate Raspberry Pi firmware telemetry in service context
+  when:
+    - ha_mqtt_agent_enable_raspberry_pi_firmware | bool
+    - ha_mqtt_agent_service_state == 'started'
+  loop: >-
+    {{
+      [['get_throttled']]
+      + ([['pmic_read_adc', 'EXT5V_V']]
+         if ha_mqtt_agent_enable_raspberry_pi_pmic_voltage else [])
+    }}
+  loop_control:
+    extended: true
+    label: "{{ item | join(' ') }}"
+  ansible.builtin.command:
+    argv: >-
+      {{
+        ['/usr/bin/systemd-run', '--quiet', '--wait', '--pipe', '--collect',
+         '--unit=' ~ _ha_mqtt_agent_service_name ~ '-firmware-check-'
+         ~ ansible_loop.index0,
+         '-p', 'User=' ~ _ha_mqtt_agent_service_user,
+         '-p', 'Group=' ~ _ha_mqtt_agent_service_group,
+         '-p', 'SupplementaryGroups=' ~ ha_mqtt_agent_raspberry_pi_video_group,
+         ha_mqtt_agent_vcgencmd_path]
+        + item
+      }}
+  register: ha_mqtt_agent_firmware_validation
+  changed_when: false
+  become: true
+
+- name: Validate ha-mqtt-agent MQTT connection in service context
+  when:
+    - ha_mqtt_agent_validate_mqtt | bool
+    - ha_mqtt_agent_service_state == 'started'
+  vars:
+    ha_mqtt_agent_mqtt_validation_groups: >-
+      {{ ha_mqtt_agent_raspberry_pi_video_group
+      if ha_mqtt_agent_enable_raspberry_pi_firmware
+      else _ha_mqtt_agent_service_group }}
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/systemd-run
+      - --quiet
+      - --wait
+      - --pipe
+      - --collect
+      - "--unit={{ _ha_mqtt_agent_service_name }}-mqtt-check"
+      - -p
+      - "User={{ _ha_mqtt_agent_service_user }}"
+      - -p
+      - "Group={{ _ha_mqtt_agent_service_group }}"
+      - -p
+      - "SupplementaryGroups={{ ha_mqtt_agent_mqtt_validation_groups }}"
+      - "{{ _ha_mqtt_agent_binary_path }}"
+      - --config
+      - "{{ _ha_mqtt_agent_config_path }}"
+      - doctor
+      - --mqtt
+  register: ha_mqtt_agent_mqtt_validation
+  changed_when: false
+  become: true
+
+- name: Assert ha-mqtt-agent service is active
+  when: ha_mqtt_agent_service_state == 'started'
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/systemctl
+      - is-active
+      - "{{ _ha_mqtt_agent_service_name }}"
+  changed_when: false

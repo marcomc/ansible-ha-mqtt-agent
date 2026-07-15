@@ -1,0 +1,106 @@
+---
+argument_specs:
+  main:
+    short_description: Install Home Assistant MQTT Agent.
+    description:
+      - Checks out a pinned Git ref and invokes its upstream systemd installer.
+      - Preserves or manages the MQTT config without embedding secrets.
+      - Manages desired service state after upstream installation.
+      - Optionally validates Raspberry Pi firmware telemetry and MQTT.
+    options:
+      ha_mqtt_agent_repo_url:
+        type: str
+        default: "https://github.com/marcomc/ha-mqtt-agent.git"
+        description: Git repository URL.
+      ha_mqtt_agent_repo_version:
+        type: str
+        default: main
+        description: Branch, tag, or commit to install.
+      ha_mqtt_agent_repo_update:
+        type: bool
+        default: true
+        description: Whether to update the checkout on each run.
+      ha_mqtt_agent_repo_force:
+        type: bool
+        default: false
+        description: Whether Git may discard local checkout changes.
+      ha_mqtt_agent_expected_version:
+        type: str
+        default: ""
+        description: Optional version substring required from the installed CLI.
+      ha_mqtt_agent_force_install:
+        type: bool
+        default: false
+        description: Whether to invoke the upstream installer even when current.
+      ha_mqtt_agent_installer_arguments:
+        type: list
+        elements: str
+        default:
+          - --non-interactive
+        description: Arguments passed through to the upstream systemd installer.
+      ha_mqtt_agent_installer_defer_start:
+        type: bool
+        default: true
+        description: >-
+          Use upstream --no-start when the pinned installer supports it.
+      ha_mqtt_agent_source_dir:
+        type: path
+        default: /opt/ha-mqtt-agent/source
+        description: Git checkout directory used to invoke the installer.
+      ha_mqtt_agent_service_enabled:
+        type: bool
+        default: true
+        description: Whether to enable the upstream service at boot.
+      ha_mqtt_agent_service_state:
+        type: str
+        default: started
+        choices:
+          - started
+          - stopped
+        description: >-
+          Desired service state after installation and config handling.
+      ha_mqtt_agent_config_management:
+        type: str
+        default: unmanaged
+        choices:
+          - managed
+          - unmanaged
+        description: Whether to rewrite or preserve the installer-owned config.
+      ha_mqtt_agent_config_content:
+        type: str
+        default: ""
+        description: Complete TOML config used by managed mode.
+      ha_mqtt_agent_config_required:
+        type: bool
+        default: true
+        description: Whether the role must find a non-empty config file.
+      ha_mqtt_agent_config_mode:
+        type: str
+        default: "0640"
+        description: Config file mode enforced after upstream installation.
+      ha_mqtt_agent_enable_raspberry_pi_firmware:
+        type: bool
+        default: false
+        description: >-
+          Validate vcgencmd through the installer-provided video group.
+      ha_mqtt_agent_enable_raspberry_pi_pmic_voltage:
+        type: bool
+        default: false
+        description: Validate the Raspberry Pi 5 PMIC EXT5V_V command.
+      ha_mqtt_agent_vcgencmd_path:
+        type: path
+        default: /usr/bin/vcgencmd
+        description: Raspberry Pi firmware command path.
+      ha_mqtt_agent_raspberry_pi_video_group:
+        type: str
+        default: video
+        description: Group permitted to query Raspberry Pi firmware telemetry.
+      ha_mqtt_agent_validate_mqtt:
+        type: bool
+        default: false
+        description: Validate broker login in the service security context.
+      ha_mqtt_agent_apt_packages:
+        type: list
+        elements: str
+        description: >-
+          Debian prerequisites installed before invoking the installer.

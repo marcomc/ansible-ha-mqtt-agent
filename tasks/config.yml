@@ -1,0 +1,68 @@
+---
+- name: Read ha-mqtt-agent config parent
+  when: ha_mqtt_agent_config_management == 'managed'
+  ansible.builtin.stat:
+    path: "{{ _ha_mqtt_agent_config_path | dirname }}"
+  register: ha_mqtt_agent_config_parent_stat
+  become: true
+
+- name: Validate existing ha-mqtt-agent config parent
+  when:
+    - ha_mqtt_agent_config_management == 'managed'
+    - ha_mqtt_agent_config_parent_stat.stat.exists
+  ansible.builtin.assert:
+    that:
+      - ha_mqtt_agent_config_parent_stat.stat.isdir
+    fail_msg: >-
+      The ha-mqtt-agent config parent exists but is not a directory:
+      {{ _ha_mqtt_agent_config_path | dirname }}.
+
+- name: Create missing ha-mqtt-agent config parent
+  when:
+    - ha_mqtt_agent_config_management == 'managed'
+    - not ha_mqtt_agent_config_parent_stat.stat.exists
+  ansible.builtin.file:
+    path: "{{ _ha_mqtt_agent_config_path | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Install managed ha-mqtt-agent config
+  when: ha_mqtt_agent_config_management == 'managed'
+  ansible.builtin.copy:
+    content: "{{ ha_mqtt_agent_config_content }}"
+    dest: "{{ _ha_mqtt_agent_config_path }}"
+    owner: root
+    group: "{{ _ha_mqtt_agent_service_group }}"
+    mode: "{{ ha_mqtt_agent_config_mode }}"
+  become: true
+  no_log: true
+  register: ha_mqtt_agent_config_install
+
+- name: Read ha-mqtt-agent config
+  ansible.builtin.stat:
+    path: "{{ _ha_mqtt_agent_config_path }}"
+  register: ha_mqtt_agent_config_stat
+  become: true
+
+- name: Require ha-mqtt-agent config
+  when: ha_mqtt_agent_config_required | bool
+  ansible.builtin.assert:
+    that:
+      - ha_mqtt_agent_config_stat.stat.exists
+      - ha_mqtt_agent_config_stat.stat.isreg
+      - ha_mqtt_agent_config_stat.stat.size | int > 0
+    fail_msg: >-
+      A non-empty ha-mqtt-agent config is required at
+      {{ _ha_mqtt_agent_config_path }}.
+
+- name: Harden existing ha-mqtt-agent config metadata
+  when: ha_mqtt_agent_config_stat.stat.exists
+  ansible.builtin.file:
+    path: "{{ _ha_mqtt_agent_config_path }}"
+    owner: root
+    group: "{{ _ha_mqtt_agent_service_group }}"
+    mode: "{{ ha_mqtt_agent_config_mode }}"
+  become: true

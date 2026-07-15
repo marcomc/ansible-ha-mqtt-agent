@@ -1,0 +1,18 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  tasks:
+    - name: Include tested role
+      ansible.builtin.include_role:
+        name: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
+      vars:
+        ha_mqtt_agent_repo_url: file:///usr/local/src/ha-mqtt-agent-fixture
+        ha_mqtt_agent_repo_version: main
+        ha_mqtt_agent_apt_packages: []
+        ha_mqtt_agent_expected_version: "0.0.0-test"
+        ha_mqtt_agent_config_management: managed
+        ha_mqtt_agent_config_content: |
+          mqtt_host = "broker.example.test"
+          device_id = "molecule"
+        ha_mqtt_agent_validate_mqtt: false

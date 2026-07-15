@@ -1,0 +1,41 @@
+---
+ha_mqtt_agent_repo_url: "https://github.com/marcomc/ha-mqtt-agent.git"
+ha_mqtt_agent_repo_version: main
+ha_mqtt_agent_repo_update: true
+ha_mqtt_agent_repo_force: false
+ha_mqtt_agent_expected_version: ""
+ha_mqtt_agent_force_install: false
+ha_mqtt_agent_installer_arguments:
+  - --non-interactive
+ha_mqtt_agent_installer_defer_start: true
+
+ha_mqtt_agent_source_dir: /opt/ha-mqtt-agent/source
+
+ha_mqtt_agent_service_enabled: true
+ha_mqtt_agent_service_state: started
+
+ha_mqtt_agent_config_management: unmanaged
+ha_mqtt_agent_config_content: ""
+ha_mqtt_agent_config_required: true
+ha_mqtt_agent_config_mode: "0640"
+
+ha_mqtt_agent_enable_raspberry_pi_firmware: false
+ha_mqtt_agent_enable_raspberry_pi_pmic_voltage: false
+ha_mqtt_agent_vcgencmd_path: /usr/bin/vcgencmd
+ha_mqtt_agent_raspberry_pi_video_group: video
+ha_mqtt_agent_validate_mqtt: false
+
+ha_mqtt_agent_apt_packages:
+  - ca-certificates
+  - git
+  - python3
+  - python3-venv
+
+_ha_mqtt_agent_binary_path: /usr/local/bin/ha-mqtt-agent
+_ha_mqtt_agent_config_path: /etc/ha-mqtt-agent/config.toml
+_ha_mqtt_agent_install_marker_path: >-
+  /opt/ha-mqtt-agent/.ansible-installed-revision
+_ha_mqtt_agent_service_group: ha-mqtt-agent
+_ha_mqtt_agent_service_name: ha-mqtt-agent
+_ha_mqtt_agent_service_unit_path: /etc/systemd/system/ha-mqtt-agent.service
+_ha_mqtt_agent_service_user: ha-mqtt-agent
