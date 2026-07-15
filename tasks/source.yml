@@ -44,6 +44,7 @@
     chdir: "{{ ha_mqtt_agent_source_dir }}"
   register: ha_mqtt_agent_source_revision
   changed_when: false
+  check_mode: false
   become: true
 
 - name: Read ha-mqtt-agent installer interface
@@ -53,6 +54,7 @@
       - --help
   register: ha_mqtt_agent_installer_help
   changed_when: false
+  check_mode: false
   become: true
 
 - name: Resolve ha-mqtt-agent deferred-start behavior

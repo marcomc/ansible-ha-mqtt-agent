@@ -2,22 +2,100 @@
 - name: Verify
   hosts: all
   become: true
-  gather_facts: false
+  gather_facts: true
   tasks:
-    - name: Read managed config
+    - name: Read pre-check managed config
       ansible.builtin.slurp:
         path: /etc/ha-mqtt-agent/config.toml
-      register: ha_mqtt_agent_test_config
+      register: ha_mqtt_agent_test_config_before_check
 
-    - name: Read managed config metadata
+    - name: Read pre-check managed config metadata
       ansible.builtin.stat:
         path: /etc/ha-mqtt-agent/config.toml
-      register: ha_mqtt_agent_test_config_stat
+      register: ha_mqtt_agent_test_config_stat_before_check
 
-    - name: Read installed revision marker
+    - name: Read pre-check installed revision marker
       ansible.builtin.slurp:
         path: /opt/ha-mqtt-agent/.ansible-installed-revision
-      register: ha_mqtt_agent_test_marker
+      register: ha_mqtt_agent_test_marker_before_check
+
+    - name: Read pre-check installed revision marker metadata
+      ansible.builtin.stat:
+        path: /opt/ha-mqtt-agent/.ansible-installed-revision
+      register: ha_mqtt_agent_test_marker_stat_before_check
+
+    - name: Read pre-check installer invocation count
+      ansible.builtin.command:
+        argv:
+          - wc
+          - -l
+          - /var/tmp/ha-mqtt-agent-probes/installer.log
+      changed_when: false
+      register: ha_mqtt_agent_test_installer_count_before_check
+
+    - name: Read pre-check service activation timestamp
+      ansible.builtin.command:
+        argv:
+          - systemctl
+          - show
+          - --property=ActiveEnterTimestampMonotonic
+          - --value
+          - ha-mqtt-agent
+      changed_when: false
+      register: ha_mqtt_agent_test_service_timestamp_before_check
+
+    - name: Run the converged role in check mode
+      ansible.builtin.command:
+        argv:
+          - ansible-playbook
+          - --check
+          - --inventory
+          - "{{ inventory_file }}"
+          - "{{ playbook_dir }}/check.yml"
+      changed_when: false
+      delegate_to: localhost
+      become: false
+      register: ha_mqtt_agent_test_check_mode
+
+    - name: Read post-check managed config
+      ansible.builtin.slurp:
+        path: /etc/ha-mqtt-agent/config.toml
+      register: ha_mqtt_agent_test_config_after_check
+
+    - name: Read post-check managed config metadata
+      ansible.builtin.stat:
+        path: /etc/ha-mqtt-agent/config.toml
+      register: ha_mqtt_agent_test_config_stat_after_check
+
+    - name: Read post-check installed revision marker
+      ansible.builtin.slurp:
+        path: /opt/ha-mqtt-agent/.ansible-installed-revision
+      register: ha_mqtt_agent_test_marker_after_check
+
+    - name: Read post-check installed revision marker metadata
+      ansible.builtin.stat:
+        path: /opt/ha-mqtt-agent/.ansible-installed-revision
+      register: ha_mqtt_agent_test_marker_stat_after_check
+
+    - name: Read post-check installer invocation count
+      ansible.builtin.command:
+        argv:
+          - wc
+          - -l
+          - /var/tmp/ha-mqtt-agent-probes/installer.log
+      changed_when: false
+      register: ha_mqtt_agent_test_installer_count_after_check
+
+    - name: Read post-check service activation timestamp
+      ansible.builtin.command:
+        argv:
+          - systemctl
+          - show
+          - --property=ActiveEnterTimestampMonotonic
+          - --value
+          - ha-mqtt-agent
+      changed_when: false
+      register: ha_mqtt_agent_test_service_timestamp_after_check
 
     - name: Read checked-out source revision
       ansible.builtin.command:
@@ -39,16 +117,35 @@
       changed_when: false
       register: ha_mqtt_agent_test_service
 
-    - name: Assert installed agent state
+    - name: Assert installed agent and check-mode state
       ansible.builtin.assert:
         that:
           - >-
-            ha_mqtt_agent_test_config.content | b64decode is
+            ha_mqtt_agent_test_config_before_check.content | b64decode is
             search('broker.example.test')
-          - ha_mqtt_agent_test_config_stat.stat.mode == '0640'
-          - ha_mqtt_agent_test_config_stat.stat.pw_name == 'root'
-          - ha_mqtt_agent_test_config_stat.stat.gr_name == 'ha-mqtt-agent'
+          - ha_mqtt_agent_test_config_stat_before_check.stat.mode == '0640'
+          - ha_mqtt_agent_test_config_stat_before_check.stat.pw_name == 'root'
+          - ha_mqtt_agent_test_config_stat_before_check.stat.gr_name == 'ha-mqtt-agent'
           - >-
-            (ha_mqtt_agent_test_marker.content | b64decode | trim) ==
+            (ha_mqtt_agent_test_marker_before_check.content | b64decode | trim) ==
             (ha_mqtt_agent_test_revision.stdout | trim)
           - ha_mqtt_agent_test_service.stdout | trim == 'active'
+          - ha_mqtt_agent_test_check_mode.rc == 0
+          - >-
+            ha_mqtt_agent_test_config_after_check.content ==
+            ha_mqtt_agent_test_config_before_check.content
+          - >-
+            ha_mqtt_agent_test_config_stat_after_check.stat.mtime ==
+            ha_mqtt_agent_test_config_stat_before_check.stat.mtime
+          - >-
+            ha_mqtt_agent_test_marker_after_check.content ==
+            ha_mqtt_agent_test_marker_before_check.content
+          - >-
+            ha_mqtt_agent_test_marker_stat_after_check.stat.mtime ==
+            ha_mqtt_agent_test_marker_stat_before_check.stat.mtime
+          - >-
+            ha_mqtt_agent_test_installer_count_after_check.stdout | int ==
+            ha_mqtt_agent_test_installer_count_before_check.stdout | int
+          - >-
+            ha_mqtt_agent_test_service_timestamp_after_check.stdout | trim ==
+            ha_mqtt_agent_test_service_timestamp_before_check.stdout | trim

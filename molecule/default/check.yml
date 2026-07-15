@@ -1,5 +1,5 @@
 ---
-- name: Converge
+- name: Check converged role
   hosts: all
   become: true
   tasks:

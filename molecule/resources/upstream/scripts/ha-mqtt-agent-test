@@ -5,6 +5,13 @@ case "${1:-}" in
   --version)
     printf '%s\n' 'ha-mqtt-agent 0.0.0-test'
     ;;
+  --config)
+    if [[ "${3:-}" != 'doctor' || "${4:-}" != '--mqtt' ]]; then
+      printf '%s\n' 'fixture doctor requires --mqtt' >&2
+      exit 2
+    fi
+    printf '%s\n' 'MQTT connection healthy'
+    ;;
   run)
     exec /bin/sleep infinity
     ;;
