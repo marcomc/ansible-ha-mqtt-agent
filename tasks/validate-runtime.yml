@@ -105,10 +105,16 @@
       - "{{ _ha_mqtt_agent_service_name }}"
   register: ha_mqtt_agent_service_validation
   changed_when: false
+  failed_when: false
   check_mode: false
 
 - name: Assert ha-mqtt-agent service validation result
   when: ha_mqtt_agent_service_state == 'started'
   ansible.builtin.assert:
     that:
-      - ha_mqtt_agent_service_validation.stdout | trim == 'active'
+      - >-
+        ha_mqtt_agent_service_validation.stdout | trim == 'active'
+        or (
+          ansible_check_mode
+          and (ha_mqtt_agent_service_manage.changed | default(false))
+        )

@@ -17,3 +17,4 @@
         else ha_mqtt_agent_service_state
       }}
   become: true
+  register: ha_mqtt_agent_service_manage
