@@ -10,6 +10,10 @@ case "${1:-}" in
       printf '%s\n' 'fixture doctor requires --mqtt' >&2
       exit 2
     fi
+    if grep --fixed-strings --quiet 'mqtt_host = "invalid.example.test"' "${2}"; then
+      printf '%s\n' 'MQTT connection unhealthy' >&2
+      exit 1
+    fi
     printf '%s\n' 'MQTT connection healthy'
     ;;
   run)

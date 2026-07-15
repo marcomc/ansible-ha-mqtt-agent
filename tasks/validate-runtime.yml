@@ -59,6 +59,11 @@
   when:
     - ha_mqtt_agent_validate_mqtt | bool
     - ha_mqtt_agent_service_state == 'started'
+    - >-
+      not (
+        ansible_check_mode
+        and (ha_mqtt_agent_config_install.changed | default(false))
+      )
   vars:
     ha_mqtt_agent_mqtt_validation_groups: >-
       {{ ha_mqtt_agent_raspberry_pi_video_group
@@ -92,6 +97,11 @@
   when:
     - ha_mqtt_agent_validate_mqtt | bool
     - ha_mqtt_agent_service_state == 'started'
+    - >-
+      not (
+        ansible_check_mode
+        and (ha_mqtt_agent_config_install.changed | default(false))
+      )
   ansible.builtin.assert:
     that:
       - ha_mqtt_agent_mqtt_validation.rc == 0

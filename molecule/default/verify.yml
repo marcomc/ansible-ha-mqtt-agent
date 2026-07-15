@@ -152,6 +152,42 @@
             ha_mqtt_agent_test_service_timestamp_after_check.stdout | trim ==
             ha_mqtt_agent_test_service_timestamp_before_check.stdout | trim
 
+    - name: Write stale managed config that fails MQTT validation
+      ansible.builtin.copy:
+        content: |
+          mqtt_host = "invalid.example.test"
+          device_id = "molecule"
+        dest: /etc/ha-mqtt-agent/config.toml
+        owner: root
+        group: ha-mqtt-agent
+        mode: "0640"
+
+    - name: Run pending managed config role in check mode
+      ansible.builtin.command:
+        argv:
+          - ansible-playbook
+          - --check
+          - --inventory
+          - "{{ inventory_file }}"
+          - "{{ playbook_dir }}/check.yml"
+      changed_when: false
+      delegate_to: localhost
+      become: false
+      register: ha_mqtt_agent_test_pending_config_check
+
+    - name: Read managed config after pending check mode
+      ansible.builtin.slurp:
+        path: /etc/ha-mqtt-agent/config.toml
+      register: ha_mqtt_agent_test_config_after_pending_check
+
+    - name: Assert pending managed config check-mode behavior
+      ansible.builtin.assert:
+        that:
+          - ha_mqtt_agent_test_pending_config_check.rc == 0
+          - >-
+            ha_mqtt_agent_test_config_after_pending_check.content | b64decode is
+            search('invalid.example.test')
+
     - name: Stop the service to exercise pending check-mode start
       ansible.builtin.systemd_service:
         name: ha-mqtt-agent
