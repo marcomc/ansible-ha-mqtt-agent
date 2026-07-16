@@ -22,6 +22,8 @@ for argument in "$@"; do
   esac
 done
 
+printf '%s\n' 'install' >> /var/tmp/ha-mqtt-agent-probes/installer.log
+
 if ! getent group ha-mqtt-agent >/dev/null; then
   groupadd --system ha-mqtt-agent
 fi

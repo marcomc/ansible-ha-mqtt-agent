@@ -2,22 +2,100 @@
 - name: Verify
   hosts: all
   become: true
-  gather_facts: false
+  gather_facts: true
   tasks:
-    - name: Read managed config
+    - name: Read pre-check managed config
       ansible.builtin.slurp:
         path: /etc/ha-mqtt-agent/config.toml
-      register: ha_mqtt_agent_test_config
+      register: ha_mqtt_agent_test_config_before_check
 
-    - name: Read managed config metadata
+    - name: Read pre-check managed config metadata
       ansible.builtin.stat:
         path: /etc/ha-mqtt-agent/config.toml
-      register: ha_mqtt_agent_test_config_stat
+      register: ha_mqtt_agent_test_config_stat_before_check
 
-    - name: Read installed revision marker
+    - name: Read pre-check installed revision marker
       ansible.builtin.slurp:
         path: /opt/ha-mqtt-agent/.ansible-installed-revision
-      register: ha_mqtt_agent_test_marker
+      register: ha_mqtt_agent_test_marker_before_check
+
+    - name: Read pre-check installed revision marker metadata
+      ansible.builtin.stat:
+        path: /opt/ha-mqtt-agent/.ansible-installed-revision
+      register: ha_mqtt_agent_test_marker_stat_before_check
+
+    - name: Read pre-check installer invocation count
+      ansible.builtin.command:
+        argv:
+          - wc
+          - -l
+          - /var/tmp/ha-mqtt-agent-probes/installer.log
+      changed_when: false
+      register: ha_mqtt_agent_test_installer_count_before_check
+
+    - name: Read pre-check service activation timestamp
+      ansible.builtin.command:
+        argv:
+          - systemctl
+          - show
+          - --property=ActiveEnterTimestampMonotonic
+          - --value
+          - ha-mqtt-agent
+      changed_when: false
+      register: ha_mqtt_agent_test_service_timestamp_before_check
+
+    - name: Run the converged role in check mode
+      ansible.builtin.command:
+        argv:
+          - ansible-playbook
+          - --check
+          - --inventory
+          - "{{ inventory_file }}"
+          - "{{ playbook_dir }}/check.yml"
+      changed_when: false
+      delegate_to: localhost
+      become: false
+      register: ha_mqtt_agent_test_check_mode
+
+    - name: Read post-check managed config
+      ansible.builtin.slurp:
+        path: /etc/ha-mqtt-agent/config.toml
+      register: ha_mqtt_agent_test_config_after_check
+
+    - name: Read post-check managed config metadata
+      ansible.builtin.stat:
+        path: /etc/ha-mqtt-agent/config.toml
+      register: ha_mqtt_agent_test_config_stat_after_check
+
+    - name: Read post-check installed revision marker
+      ansible.builtin.slurp:
+        path: /opt/ha-mqtt-agent/.ansible-installed-revision
+      register: ha_mqtt_agent_test_marker_after_check
+
+    - name: Read post-check installed revision marker metadata
+      ansible.builtin.stat:
+        path: /opt/ha-mqtt-agent/.ansible-installed-revision
+      register: ha_mqtt_agent_test_marker_stat_after_check
+
+    - name: Read post-check installer invocation count
+      ansible.builtin.command:
+        argv:
+          - wc
+          - -l
+          - /var/tmp/ha-mqtt-agent-probes/installer.log
+      changed_when: false
+      register: ha_mqtt_agent_test_installer_count_after_check
+
+    - name: Read post-check service activation timestamp
+      ansible.builtin.command:
+        argv:
+          - systemctl
+          - show
+          - --property=ActiveEnterTimestampMonotonic
+          - --value
+          - ha-mqtt-agent
+      changed_when: false
+      register: ha_mqtt_agent_test_service_timestamp_after_check
 
     - name: Read checked-out source revision
       ansible.builtin.command:
@@ -39,16 +117,246 @@
       changed_when: false
       register: ha_mqtt_agent_test_service
 
-    - name: Assert installed agent state
+    - name: Assert installed agent and check-mode state
       ansible.builtin.assert:
         that:
           - >-
-            ha_mqtt_agent_test_config.content | b64decode is
+            ha_mqtt_agent_test_config_before_check.content | b64decode is
             search('broker.example.test')
-          - ha_mqtt_agent_test_config_stat.stat.mode == '0640'
-          - ha_mqtt_agent_test_config_stat.stat.pw_name == 'root'
-          - ha_mqtt_agent_test_config_stat.stat.gr_name == 'ha-mqtt-agent'
+          - ha_mqtt_agent_test_config_stat_before_check.stat.mode == '0640'
+          - ha_mqtt_agent_test_config_stat_before_check.stat.pw_name == 'root'
+          - ha_mqtt_agent_test_config_stat_before_check.stat.gr_name == 'ha-mqtt-agent'
           - >-
-            (ha_mqtt_agent_test_marker.content | b64decode | trim) ==
+            (ha_mqtt_agent_test_marker_before_check.content | b64decode | trim) ==
             (ha_mqtt_agent_test_revision.stdout | trim)
           - ha_mqtt_agent_test_service.stdout | trim == 'active'
+          - ha_mqtt_agent_test_check_mode.rc == 0
+          - >-
+            ha_mqtt_agent_test_config_after_check.content ==
+            ha_mqtt_agent_test_config_before_check.content
+          - >-
+            ha_mqtt_agent_test_config_stat_after_check.stat.mtime ==
+            ha_mqtt_agent_test_config_stat_before_check.stat.mtime
+          - >-
+            ha_mqtt_agent_test_marker_after_check.content ==
+            ha_mqtt_agent_test_marker_before_check.content
+          - >-
+            ha_mqtt_agent_test_marker_stat_after_check.stat.mtime ==
+            ha_mqtt_agent_test_marker_stat_before_check.stat.mtime
+          - >-
+            (ha_mqtt_agent_test_installer_count_after_check.stdout.split() |
+             first | int) ==
+            (ha_mqtt_agent_test_installer_count_before_check.stdout.split() |
+             first | int)
+          - >-
+            ha_mqtt_agent_test_service_timestamp_after_check.stdout | trim ==
+            ha_mqtt_agent_test_service_timestamp_before_check.stdout | trim
+
+    - name: Make unmanaged config unreadable to the service user
+      ansible.builtin.file:
+        path: /etc/ha-mqtt-agent/config.toml
+        owner: root
+        group: root
+        mode: "0600"
+
+    - name: Run unmanaged metadata repair role in check mode
+      ansible.builtin.command:
+        argv:
+          - ansible-playbook
+          - --check
+          - --inventory
+          - "{{ inventory_file }}"
+          - "{{ playbook_dir }}/check-unmanaged.yml"
+      changed_when: false
+      delegate_to: localhost
+      become: false
+      register: ha_mqtt_agent_test_unmanaged_metadata_check
+
+    - name: Read unmanaged config metadata after check mode
+      ansible.builtin.stat:
+        path: /etc/ha-mqtt-agent/config.toml
+      register: ha_mqtt_agent_test_unmanaged_metadata_after_check
+
+    - name: Assert unmanaged metadata check-mode behavior
+      ansible.builtin.assert:
+        that:
+          - ha_mqtt_agent_test_unmanaged_metadata_check.rc == 0
+          - ha_mqtt_agent_test_unmanaged_metadata_after_check.stat.mode == '0600'
+          - ha_mqtt_agent_test_unmanaged_metadata_after_check.stat.gr_name == 'root'
+
+    - name: Read firmware probe count before pending install check mode
+      ansible.builtin.command:
+        argv:
+          - wc
+          - -l
+          - /tmp/ha-mqtt-agent-firmware.log
+      changed_when: false
+      register: ha_mqtt_agent_test_firmware_count_before_pending_install_check
+
+    - name: Read MQTT probe count before pending install check mode
+      ansible.builtin.command:
+        argv:
+          - wc
+          - -l
+          - /tmp/ha-mqtt-agent-mqtt.log
+      changed_when: false
+      register: ha_mqtt_agent_test_mqtt_count_before_pending_install_check
+
+    - name: Run pending install role in check mode
+      ansible.builtin.command:
+        argv:
+          - ansible-playbook
+          - --check
+          - --inventory
+          - "{{ inventory_file }}"
+          - "{{ playbook_dir }}/check-pending-install.yml"
+      changed_when: false
+      delegate_to: localhost
+      become: false
+      register: ha_mqtt_agent_test_pending_install_check
+
+    - name: Read installer invocation count after pending install check mode
+      ansible.builtin.command:
+        argv:
+          - wc
+          - -l
+          - /var/tmp/ha-mqtt-agent-probes/installer.log
+      changed_when: false
+      register: ha_mqtt_agent_test_installer_count_after_pending_install_check
+
+    - name: Read firmware probe count after pending install check mode
+      ansible.builtin.command:
+        argv:
+          - wc
+          - -l
+          - /tmp/ha-mqtt-agent-firmware.log
+      changed_when: false
+      register: ha_mqtt_agent_test_firmware_count_after_pending_install_check
+
+    - name: Read MQTT probe count after pending install check mode
+      ansible.builtin.command:
+        argv:
+          - wc
+          - -l
+          - /tmp/ha-mqtt-agent-mqtt.log
+      changed_when: false
+      register: ha_mqtt_agent_test_mqtt_count_after_pending_install_check
+
+    - name: Assert pending install check-mode behavior
+      ansible.builtin.assert:
+        that:
+          - ha_mqtt_agent_test_pending_install_check.rc == 0
+          - >-
+            (ha_mqtt_agent_test_installer_count_after_pending_install_check.stdout.split() |
+             first | int) ==
+            (ha_mqtt_agent_test_installer_count_after_check.stdout.split() |
+             first | int)
+          - >-
+            (ha_mqtt_agent_test_firmware_count_after_pending_install_check.stdout.split() |
+             first | int) ==
+            (ha_mqtt_agent_test_firmware_count_before_pending_install_check.stdout.split() |
+             first | int)
+          - >-
+            (ha_mqtt_agent_test_mqtt_count_after_pending_install_check.stdout.split() |
+             first | int) ==
+            (ha_mqtt_agent_test_mqtt_count_before_pending_install_check.stdout.split() |
+             first | int)
+
+    - name: Write stale managed config that fails MQTT validation
+      ansible.builtin.copy:
+        content: |
+          mqtt_host = "invalid.example.test"
+          device_id = "molecule"
+        dest: /etc/ha-mqtt-agent/config.toml
+        owner: root
+        group: ha-mqtt-agent
+        mode: "0640"
+
+    - name: Run pending managed config role in check mode
+      ansible.builtin.command:
+        argv:
+          - ansible-playbook
+          - --check
+          - --inventory
+          - "{{ inventory_file }}"
+          - "{{ playbook_dir }}/check.yml"
+      changed_when: false
+      delegate_to: localhost
+      become: false
+      register: ha_mqtt_agent_test_pending_config_check
+
+    - name: Read managed config after pending check mode
+      ansible.builtin.slurp:
+        path: /etc/ha-mqtt-agent/config.toml
+      register: ha_mqtt_agent_test_config_after_pending_check
+
+    - name: Assert pending managed config check-mode behavior
+      ansible.builtin.assert:
+        that:
+          - ha_mqtt_agent_test_pending_config_check.rc == 0
+          - >-
+            ha_mqtt_agent_test_config_after_pending_check.content | b64decode is
+            search('invalid.example.test')
+
+    - name: Remove managed config to exercise pending check-mode creation
+      ansible.builtin.file:
+        path: /etc/ha-mqtt-agent/config.toml
+        state: absent
+
+    - name: Run missing managed config role in check mode
+      ansible.builtin.command:
+        argv:
+          - ansible-playbook
+          - --check
+          - --inventory
+          - "{{ inventory_file }}"
+          - "{{ playbook_dir }}/check.yml"
+      changed_when: false
+      delegate_to: localhost
+      become: false
+      register: ha_mqtt_agent_test_missing_config_check
+
+    - name: Read managed config after missing config check mode
+      ansible.builtin.stat:
+        path: /etc/ha-mqtt-agent/config.toml
+      register: ha_mqtt_agent_test_missing_config_after_check
+
+    - name: Assert missing managed config check-mode behavior
+      ansible.builtin.assert:
+        that:
+          - ha_mqtt_agent_test_missing_config_check.rc == 0
+          - not ha_mqtt_agent_test_missing_config_after_check.stat.exists
+
+    - name: Stop the service to exercise pending check-mode start
+      ansible.builtin.systemd_service:
+        name: ha-mqtt-agent
+        state: stopped
+
+    - name: Run the stopped service role in check mode
+      ansible.builtin.command:
+        argv:
+          - ansible-playbook
+          - --check
+          - --inventory
+          - "{{ inventory_file }}"
+          - "{{ playbook_dir }}/check.yml"
+      changed_when: false
+      delegate_to: localhost
+      become: false
+      register: ha_mqtt_agent_test_stopped_service_check
+
+    - name: Read service state after stopped service check mode
+      ansible.builtin.command:
+        argv:
+          - systemctl
+          - is-active
+          - ha-mqtt-agent
+      changed_when: false
+      failed_when: false
+      register: ha_mqtt_agent_test_stopped_service_after_check
+
+    - name: Assert stopped service check-mode behavior
+      ansible.builtin.assert:
+        that:
+          - ha_mqtt_agent_test_stopped_service_check.rc == 0
+          - ha_mqtt_agent_test_stopped_service_after_check.stdout | trim == 'inactive'

@@ -1,5 +1,5 @@
 ---
-- name: Converge
+- name: Check role with pending install
   hosts: all
   become: true
   tasks:
@@ -10,7 +10,8 @@
         ha_mqtt_agent_repo_url: file:///usr/local/src/ha-mqtt-agent-fixture
         ha_mqtt_agent_repo_version: main
         ha_mqtt_agent_apt_packages: []
-        ha_mqtt_agent_expected_version: "0.0.0-test"
+        ha_mqtt_agent_expected_version: "0.0.1-test"
+        ha_mqtt_agent_force_install: true
         ha_mqtt_agent_config_management: managed
         ha_mqtt_agent_config_content: |
           mqtt_host = "broker.example.test"

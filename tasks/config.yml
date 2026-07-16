@@ -48,7 +48,14 @@
   become: true
 
 - name: Require ha-mqtt-agent config
-  when: ha_mqtt_agent_config_required | bool
+  when:
+    - ha_mqtt_agent_config_required | bool
+    - >-
+      not (
+        ansible_check_mode
+        and ha_mqtt_agent_config_management == 'managed'
+        and (ha_mqtt_agent_config_install.changed | default(false))
+      )
   ansible.builtin.assert:
     that:
       - ha_mqtt_agent_config_stat.stat.exists
@@ -66,3 +73,4 @@
     group: "{{ _ha_mqtt_agent_service_group }}"
     mode: "{{ ha_mqtt_agent_config_mode }}"
   become: true
+  register: ha_mqtt_agent_config_metadata

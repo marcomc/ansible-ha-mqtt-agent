@@ -1,5 +1,5 @@
 ---
-- name: Converge
+- name: Check unmanaged role configuration
   hosts: all
   become: true
   tasks:
@@ -11,10 +11,7 @@
         ha_mqtt_agent_repo_version: main
         ha_mqtt_agent_apt_packages: []
         ha_mqtt_agent_expected_version: "0.0.0-test"
-        ha_mqtt_agent_config_management: managed
-        ha_mqtt_agent_config_content: |
-          mqtt_host = "broker.example.test"
-          device_id = "molecule"
+        ha_mqtt_agent_config_management: unmanaged
         ha_mqtt_agent_enable_raspberry_pi_firmware: true
         ha_mqtt_agent_enable_raspberry_pi_pmic_voltage: true
         ha_mqtt_agent_vcgencmd_path: /usr/local/bin/vcgencmd

@@ -32,7 +32,7 @@ re-running that installer when the checkout and installed artifacts are current.
 After the role is published to Galaxy, install a pinned release:
 
 ```sh
-ansible-galaxy role install marcomc.ha_mqtt_agent,0.1.0
+ansible-galaxy role install marcomc.ha_mqtt_agent,0.1.1
 ```
 
 Before the first Galaxy import, use Git directly:
@@ -109,8 +109,11 @@ uv pip install --python .venv/bin/python -r requirements-dev.txt
 
 Molecule uses a local Git fixture and a mock installer, so it never contacts an
 MQTT broker or the production agent repository. It validates installation,
-service state, managed configuration, revision tracking, and idempotence on
-Debian 13. Docker must be running.
+service state, managed configuration, revision tracking, idempotence, and a
+post-convergence check-mode run. The check-mode regression verifies version,
+firmware, PMIC-voltage, MQTT, and service-state probes while confirming it does
+not reinstall the agent, rewrite configuration, restart the service, or change
+the revision marker. Docker must be running.
 
 ## Release
 

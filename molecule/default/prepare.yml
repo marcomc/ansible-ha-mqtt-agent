@@ -17,6 +17,27 @@
         dest: /usr/local/src/ha-mqtt-agent-fixture/
         mode: preserve
 
+    - name: Create fixture probe trace directory
+      ansible.builtin.file:
+        path: /var/tmp/ha-mqtt-agent-probes
+        state: directory
+        mode: "0755"
+
+    - name: Ensure fixture Raspberry Pi video group exists
+      ansible.builtin.group:
+        name: video
+        state: present
+        system: true
+
+    - name: Install fixture Raspberry Pi firmware command
+      ansible.builtin.copy:
+        src: /usr/local/src/ha-mqtt-agent-fixture/scripts/vcgencmd-test
+        dest: /usr/local/bin/vcgencmd
+        owner: root
+        group: root
+        mode: "0755"
+        remote_src: true
+
     - name: Initialize fixture Git repository
       ansible.builtin.command:
         argv:
