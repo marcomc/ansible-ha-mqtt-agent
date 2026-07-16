@@ -83,7 +83,10 @@
     - >-
       not (
         ansible_check_mode
-        and (ha_mqtt_agent_config_install.changed | default(false))
+        and (
+          (ha_mqtt_agent_config_install.changed | default(false))
+          or (ha_mqtt_agent_config_metadata.changed | default(false))
+        )
       )
     - >-
       not (
@@ -126,7 +129,10 @@
     - >-
       not (
         ansible_check_mode
-        and (ha_mqtt_agent_config_install.changed | default(false))
+        and (
+          (ha_mqtt_agent_config_install.changed | default(false))
+          or (ha_mqtt_agent_config_metadata.changed | default(false))
+        )
       )
     - >-
       not (

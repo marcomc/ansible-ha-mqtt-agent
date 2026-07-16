@@ -152,6 +152,38 @@
             ha_mqtt_agent_test_service_timestamp_after_check.stdout | trim ==
             ha_mqtt_agent_test_service_timestamp_before_check.stdout | trim
 
+    - name: Make unmanaged config unreadable to the service user
+      ansible.builtin.file:
+        path: /etc/ha-mqtt-agent/config.toml
+        owner: root
+        group: root
+        mode: "0600"
+
+    - name: Run unmanaged metadata repair role in check mode
+      ansible.builtin.command:
+        argv:
+          - ansible-playbook
+          - --check
+          - --inventory
+          - "{{ inventory_file }}"
+          - "{{ playbook_dir }}/check-unmanaged.yml"
+      changed_when: false
+      delegate_to: localhost
+      become: false
+      register: ha_mqtt_agent_test_unmanaged_metadata_check
+
+    - name: Read unmanaged config metadata after check mode
+      ansible.builtin.stat:
+        path: /etc/ha-mqtt-agent/config.toml
+      register: ha_mqtt_agent_test_unmanaged_metadata_after_check
+
+    - name: Assert unmanaged metadata check-mode behavior
+      ansible.builtin.assert:
+        that:
+          - ha_mqtt_agent_test_unmanaged_metadata_check.rc == 0
+          - ha_mqtt_agent_test_unmanaged_metadata_after_check.stat.mode == '0600'
+          - ha_mqtt_agent_test_unmanaged_metadata_after_check.stat.gr_name == 'root'
+
     - name: Read firmware probe count before pending install check mode
       ansible.builtin.command:
         argv:
@@ -265,6 +297,35 @@
           - >-
             ha_mqtt_agent_test_config_after_pending_check.content | b64decode is
             search('invalid.example.test')
+
+    - name: Remove managed config to exercise pending check-mode creation
+      ansible.builtin.file:
+        path: /etc/ha-mqtt-agent/config.toml
+        state: absent
+
+    - name: Run missing managed config role in check mode
+      ansible.builtin.command:
+        argv:
+          - ansible-playbook
+          - --check
+          - --inventory
+          - "{{ inventory_file }}"
+          - "{{ playbook_dir }}/check.yml"
+      changed_when: false
+      delegate_to: localhost
+      become: false
+      register: ha_mqtt_agent_test_missing_config_check
+
+    - name: Read managed config after missing config check mode
+      ansible.builtin.stat:
+        path: /etc/ha-mqtt-agent/config.toml
+      register: ha_mqtt_agent_test_missing_config_after_check
+
+    - name: Assert missing managed config check-mode behavior
+      ansible.builtin.assert:
+        that:
+          - ha_mqtt_agent_test_missing_config_check.rc == 0
+          - not ha_mqtt_agent_test_missing_config_after_check.stat.exists
 
     - name: Stop the service to exercise pending check-mode start
       ansible.builtin.systemd_service:
