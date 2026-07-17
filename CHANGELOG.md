@@ -2,7 +2,7 @@
 
 All notable changes to this role are documented here.
 
-## [0.1.1] - Unreleased
+## [0.1.1] - 2026-07-17
 
 - Fixed post-convergence check mode by running required read-only source and
   runtime validation probes while preserving dry-run behavior for mutations.
